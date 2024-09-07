@@ -35,8 +35,7 @@ import useHash from "./useHash";
 import ConnectionStatus from "./ConnectionStatus";
 import Footer from "./Footer";
 import User from "./User";
-import useMonacoVimMode from "./useMonacoVimMode";
-import useMonacoReplaceMetaSchema from "./useMonacoReplaceMetaSchema";
+
 
 function getWsUri(id: string) {
   let url = new URL(`api/socket/${id}`, window.location.href);
@@ -63,13 +62,35 @@ function App() {
   const [hue, setHue] = useStorage("hue", generateHue);
   const [editor, setEditor] = useState<editor.IStandaloneCodeEditor>();
   const [darkMode, setDarkMode] = useStorage("darkMode", () => false);
-  const [vimMode, setVimMode] = useStorage("vimMode", () => false);
   const rustpad = useRef<Rustpad>();
   const vimModeRef = useRef<any>(); // Ref to hold the Vim mode instance
   const id = useHash();
+  const editorRef = useRef(null);
+  const statusBarRef = useRef(null);
+  const [vimMode, setVimMode] = useState(null);
+  const [isVimEnabled, setIsVimEnabled] = useState(false);
 
-  useMonacoReplaceMetaSchema(editor);
-  useMonacoVimMode(editor);
+  // Callback when the editor is mounted
+  const handleEditorDidMount = (editor) => {
+    setEditor(editor)
+    editorRef.current = editor;
+  };
+
+    // Toggle Vim Mode
+  const handleVimMode = () => {
+    if (!isVimEnabled) {
+      // Enable Vim mode
+      console.log("vim mode on")
+      const vim = initVimMode(editorRef.current, statusBarRef.current);
+      setVimMode(vim);
+    } else {
+      // Disable Vim mode
+      console.log("vim mode off")
+      vimMode && vimMode.dispose();
+      setVimMode(null);
+    }
+    setIsVimEnabled(!isVimEnabled);
+  };
 
   useEffect(() => {
     if (editor?.getModel()) {
@@ -213,6 +234,10 @@ function App() {
             <Heading size="sm">Dark Mode</Heading>
             <Switch isChecked={darkMode} onChange={handleDarkMode} />
           </Flex>
+          <Flex justifyContent="space-between" mt={4} mb={1.5} w="full">
+            <Heading size="sm">Vim Mode</Heading>
+            <Switch isChecked={vimMode} onChange={handleVimMode} />
+          </Flex>
 
           <Heading mt={4} mb={1.5} size="sm">
             Language
@@ -333,7 +358,7 @@ function App() {
                 automaticLayout: true,
                 fontSize: 13,
               }}
-              onMount={(editor) => setEditor(editor)}
+              onMount={(editor) => handleEditorDidMount(editor)}
             />
           </Box>
         </Flex>
