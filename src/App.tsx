@@ -26,6 +26,7 @@ import {
 import useStorage from "use-local-storage-state";
 import Editor from "@monaco-editor/react";
 import { editor } from "monaco-editor/esm/vs/editor/editor.api";
+import { initVimMode } from 'monaco-vim'; // Import initVimMode for Vim integration
 import rustpadRaw from "../rustpad-server/src/rustpad.rs?raw";
 import languages from "./languages.json";
 import animals from "./animals.json";
@@ -34,6 +35,8 @@ import useHash from "./useHash";
 import ConnectionStatus from "./ConnectionStatus";
 import Footer from "./Footer";
 import User from "./User";
+import useMonacoVimMode from "./useMonacoVimMode";
+import useMonacoReplaceMetaSchema from "./useMonacoReplaceMetaSchema";
 
 function getWsUri(id: string) {
   let url = new URL(`api/socket/${id}`, window.location.href);
@@ -60,8 +63,13 @@ function App() {
   const [hue, setHue] = useStorage("hue", generateHue);
   const [editor, setEditor] = useState<editor.IStandaloneCodeEditor>();
   const [darkMode, setDarkMode] = useStorage("darkMode", () => false);
+  const [vimMode, setVimMode] = useStorage("vimMode", () => false);
   const rustpad = useRef<Rustpad>();
+  const vimModeRef = useRef<any>(); // Ref to hold the Vim mode instance
   const id = useHash();
+
+  useMonacoReplaceMetaSchema(editor);
+  useMonacoVimMode(editor);
 
   useEffect(() => {
     if (editor?.getModel()) {
@@ -89,9 +97,23 @@ function App() {
         },
         onChangeUsers: setUsers,
       });
+
+      // Initialize Vim mode after the editor is set up
+      const statusBar = document.createElement('div');
+      statusBar.style.height = '20px';
+      statusBar.style.background = '#1e1e1e';
+      statusBar.style.color = 'white';
+      statusBar.style.display = 'flex';
+      statusBar.style.alignItems = 'center';
+      statusBar.style.paddingLeft = '10px';
+      statusBar.id = "status-bar"
+      document.body.appendChild(statusBar);
+
       return () => {
         rustpad.current?.dispose();
         rustpad.current = undefined;
+        // vimModeRef.current?.dispose(); // Dispose of Vim mode when cleaning up
+        // statusBar.remove(); // Remove status bar when unmounting
       };
     }
   }, [id, editor, toast, setUsers]);
